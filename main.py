@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import cloudscraper
 from typing import List, Dict, Any, Tuple
 
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential, retry_if_exception_type
 from tqdm import tqdm
 from colorama import init, Fore
 
@@ -51,8 +51,8 @@ def get_total_posts(base_url: str, tags: str, page: int, limit: int = 100, timeo
 
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_fixed(2),
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception_type(requests.RequestException),
     reraise=True
 )
@@ -298,10 +298,13 @@ def main():
                 # Process results with a timeout for each completion
                 # We expect at least one image to finish within (timeout + 5) seconds normally.
                 # If cloudscraper hangs, this helps us bail out.
+                # With 5 retries and exponential backoff, max wait could be around 60s+
+                batch_timeout = 60 + args.timeout
+
                 with tqdm(total=len(posts), unit="img") as pbar:
                     done_count = 0
                     try:
-                        for future in concurrent.futures.as_completed(futures, timeout=args.timeout + 5):
+                        for future in concurrent.futures.as_completed(futures, timeout=batch_timeout):
                             try:
                                 msg, size = future.result()
                                 if size > 0:
