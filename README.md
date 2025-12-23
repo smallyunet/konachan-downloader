@@ -1,56 +1,93 @@
 # Konachan Downloader
 
-A simple, multi-threaded Python script to download images from [konachan.net](https://konachan.net) based on tags.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+
+A professional, multi-threaded Python CLI tool to download images from [konachan.net](https://konachan.net). It supports downloading the latest uploads or filtering by specific tags.
+
+## Features
+
+- **Multi-threaded**: Fast downloading with concurrent workers.
+- **Resumable**: Skips files that already exist.
+- **Progress Tracking**: Automatically remembers the last downloaded page for each tag and resumes from there.
+- **Smart Filtering**: Safe mode enabled by default.
+- **Robust**: Automatic retries for network failures.
+- **Flexible**: Command-line arguments for full control.
 
 ## Prerequisites
 
-- **Python 3.8+** must be installed on your system.
+- **Python 3.8+**
 
 ## Installation
 
-1.  **Clone or download** this repository.
-2.  **Open a terminal** in the project directory.
-3.  **Create a virtual environment** (recommended to avoid dependency conflicts):
-
+1.  **Clone the repository**:
     ```bash
-    python3 -m venv .venv
+    git clone https://github.com/yourusername/konachan-downloader.git
+    cd konachan-downloader
     ```
 
-4.  **Activate the virtual environment**:
+2.  **Set up a virtual environment**:
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate  # macOS/Linux
+    # .venv\Scripts\activate   # Windows
+    ```
 
-    -   **macOS / Linux**:
-        ```bash
-        source .venv/bin/activate
-        ```
-    -   **Windows**:
-        ```bash
-        .venv\Scripts\activate
-        ```
-
-5.  **Install the required dependencies**:
-
+3.  **Install dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
 
 ## Usage
 
-1.  **Configure the script** (optional):
-    Open `main.py` in a text editor and update the `Configuration` section at the top to change tags, page limits, or download settings:
+Run the script using `python main.py`.
 
-    ```python
-    # Configuration
-    TAGS = ""            # e.g., "hatsune_miku vocaloid"
-    START_PAGE = 1
-    END_PAGE = 5
-    MAX_WORKERS = 5      # Number of concurrent downloads
-    ```
+### Safe Mode by Default
+By default, the script **only downloads safe images** (Rating: S). To download NSFW content, you must use the `--unsafe` flag.
 
-2.  **Run the script**:
+### Progress Tracking
+The script creates a `progress.json` file. If you interrupt a download, simply run the same command again, and it will **automatically resume** from the last successfully downloaded page.
 
-    ```bash
-    python main.py
-    ```
+### Examples
 
-    The script will fetch metadata and start downloading images to the `downloads` directory (or whichever directory you configured).
-# konachan-downloader
+**Download all "hatsune_miku" images (Safe only):**
+```bash
+python main.py --tags "hatsune_miku"
+```
+*Note: This will start from Page 1 (or your last saved progress) and download until no more images are found.*
+
+**Download NSFW images (Unsafe Mode):**
+```bash
+python main.py --tags "tagme" --unsafe
+```
+
+**Download specific pages:**
+```bash
+python main.py --tags "vocaloid" --start 1 --end 5
+```
+
+**Show help message:**
+```bash
+python main.py --help
+```
+
+### Options
+
+| Argument | Default | Description |
+| :--- | :--- | :--- |
+| `--tags` | `""` | Tags to search for (space separated). |
+| `--start` | `0` | Start page. `0` = Auto-resume from `progress.json` or start at 1. |
+| `--end` | `0` | End page. `0` = Download indefinitely until no images found. |
+| `--workers` | `5` | Number of concurrent download threads. |
+| `--dir` | `downloads` | Directory to save images. |
+| `--limit` | `100` | Max posts per page. |
+| `--timeout` | `10` | Network timeout in seconds. |
+| `--unsafe` | `False` | **Enable NSFW content** (Disable Safe Mode). |
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
