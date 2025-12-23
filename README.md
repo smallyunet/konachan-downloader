@@ -11,7 +11,10 @@ A professional, multi-threaded Python CLI tool to download images from [konachan
 - **Resumable**: Skips files that already exist.
 - **Progress Tracking**: Automatically remembers the last downloaded page for each tag and resumes from there.
 - **Smart Filtering**: Safe mode enabled by default.
+
 - **Robust**: Automatic retries for network failures.
+- **Polite**: Includes rate limiting to respect server load.
+- **Advanced**: Uses `cloudscraper` to bypass Cloudflare protection on the unsafe domain.
 - **Flexible**: Command-line arguments for full control.
 
 ## Prerequisites
@@ -43,7 +46,9 @@ A professional, multi-threaded Python CLI tool to download images from [konachan
 Run the script using `python main.py`.
 
 ### Safe Mode by Default
-By default, the script **only downloads safe images** (Rating: S). To download NSFW content, you must use the `--unsafe` flag.
+By default, the script **only downloads safe images** (Rating: S) from `konachan.net`. To download NSFW content, you must use the `--unsafe` flag, which switches to `konachan.com`.
+
+> **Note**: `konachan.com` has strict Cloudflare protection. While this script uses `cloudscraper` to attempt to bypass it, you may still encounter 403 Forbidden errors depending on your network environment.
 
 ### Progress Tracking
 The script creates a `progress.json` file. If you interrupt a download, simply run the same command again, and it will **automatically resume** from the last successfully downloaded page.

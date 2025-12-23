@@ -1,10 +1,12 @@
 import os
+import time
 import argparse
 import requests
 import json
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
+import cloudscraper
 from typing import List, Dict, Any, Optional
 
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
@@ -15,10 +17,14 @@ from colorama import init, Fore
 init(autoreset=True)
 
 # Default Constants
-DEFAULT_BASE_URL = "https://konachan.net/post.json"
+BASE_URL_SAFE = "https://konachan.net/post.json"
+BASE_URL_UNSAFE = "https://konachan.com/post.json"
 DEFAULT_DOWNLOAD_DIR = "downloads"
 DEFAULT_TIMEOUT = 10  # Seconds
 MAX_WORKERS_DEFAULT = 5
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
 
 
 class DownloadError(Exception):
@@ -35,10 +41,11 @@ def get_total_posts(base_url: str, tags: str, page: int, limit: int = 100, timeo
         "limit": limit
     }
     try:
-        response = requests.get(base_url, params=params, timeout=timeout)
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+        response = scraper.get(base_url, params=params, timeout=timeout)
         response.raise_for_status()
         return response.json()
-    except requests.RequestException as e:
+    except Exception as e:
         print(f"{Fore.RED}Error fetching metadata for page {page}: {e}")
         return []
 
@@ -51,9 +58,10 @@ def get_total_posts(base_url: str, tags: str, page: int, limit: int = 100, timeo
 )
 def fetch_image_content(url: str, timeout: int = 10) -> bytes:
     """
-    Fetch image content with retries.
+    Run content fetching with retries using cloudscraper.
     """
-    response = requests.get(url, timeout=timeout)
+    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+    response = scraper.get(url, timeout=timeout)
     response.raise_for_status()
     return response.content
 
@@ -148,8 +156,9 @@ def main():
             print(f"{Fore.CYAN}Reached end page {args.end}.")
             break
 
-        print(f"{Fore.BLUE}Fetching metadata for page {current_page}...")
-        posts = get_total_posts(DEFAULT_BASE_URL, args.tags, current_page, limit=args.limit, timeout=args.timeout)
+        base_url = BASE_URL_UNSAFE if args.unsafe else BASE_URL_SAFE
+        print(f"{Fore.BLUE}Fetching metadata for page {current_page} from {base_url}...")
+        posts = get_total_posts(base_url, args.tags, current_page, limit=args.limit, timeout=args.timeout)
         
         if not posts:
             print(f"{Fore.YELLOW}No more posts found on page {current_page}. Stopping.")
@@ -195,6 +204,9 @@ def main():
         # Update progress after page is complete
         save_progress(args.tags, current_page)
         current_page += 1
+        
+        # Polite delay
+        time.sleep(1)
 
     print(f"{Fore.CYAN}Job finished!")
 
