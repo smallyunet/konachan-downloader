@@ -96,3 +96,18 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+
+
+
+
+
+## Statistics
+
+| Metric | Value |
+| :--- | :--- |
+| **Total Images Downloaded** | `62` |
+| **Total Data Downloaded** | `465.97 MB` |
+| **Total Time Spent** | `00:03:25` |
+| **Average Download Speed** | `2.26 MB/s` |
+| **Current Disk Usage** | `82.92 MB` |

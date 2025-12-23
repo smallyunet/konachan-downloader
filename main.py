@@ -4,10 +4,11 @@ import argparse
 import requests
 import json
 import concurrent.futures
+import math
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 import cloudscraper
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Tuple
 
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from tqdm import tqdm
@@ -22,9 +23,8 @@ BASE_URL_UNSAFE = "https://konachan.com/post.json"
 DEFAULT_DOWNLOAD_DIR = "downloads"
 DEFAULT_TIMEOUT = 10  # Seconds
 MAX_WORKERS_DEFAULT = 5
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-}
+STATS_FILE = "stats.json"
+README_FILE = "README.md"
 
 
 class DownloadError(Exception):
@@ -66,13 +66,13 @@ def fetch_image_content(url: str, timeout: int = 10) -> bytes:
     return response.content
 
 
-def download_image(post: Dict[str, Any], download_dir: str, timeout: int = 10) -> str:
+def download_image(post: Dict[str, Any], download_dir: str, timeout: int = 10) -> Tuple[str, int]:
     """
-    Download a single image.
+    Download a single image. Returns (status_message, downloaded_bytes).
     """
     file_url = post.get("file_url")
     if not file_url:
-        return "skipped (no url)"
+        return "skipped (no url)", 0
 
     post_id = post.get("id")
     # Determine extension from URL or default to .jpg if unknown
@@ -86,20 +86,121 @@ def download_image(post: Dict[str, Any], download_dir: str, timeout: int = 10) -
 
     # Resume capability: Check if file exists
     if os.path.exists(filepath):
-        return f"{Fore.YELLOW}Skipped (already exists): {filename}"
+        return f"{Fore.YELLOW}Skipped (already exists): {filename}", 0
 
     try:
         content = fetch_image_content(file_url, timeout=timeout)
+        size = len(content)
         with open(filepath, "wb") as f:
             f.write(content)
-        return f"{Fore.GREEN}Downloaded: {filename}"
+        return f"{Fore.GREEN}Downloaded: {filename}", size
     except Exception as e:
-        return f"{Fore.RED}Failed: {filename} - {e}"
+        return f"{Fore.RED}Failed: {filename} - {e}", 0
+
+
+def format_size(size_bytes: int) -> str:
+    if size_bytes == 0:
+        return "0 B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
+
+
+def load_stats() -> Dict[str, Any]:
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            pass
+    return {
+        "total_downloaded_bytes": 0,
+        "total_time_seconds": 0,
+        "total_images_downloaded": 0
+    }
+
+
+def save_stats(stats: Dict[str, Any]):
+    with open(STATS_FILE, "w") as f:
+        json.dump(stats, f, indent=4)
+
+
+def get_disk_usage(directory: str) -> str:
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+    return format_size(total_size)
+
+
+def update_readme(stats: Dict[str, Any], download_dir: str):
+    if not os.path.exists(README_FILE):
+        return
+
+    # Calculate readable metrics
+    total_files = stats.get("total_images_downloaded", 0)
+    total_bytes = stats.get("total_downloaded_bytes", 0)
+    total_time = stats.get("total_time_seconds", 0)
+    
+    total_size_str = format_size(total_bytes)
+    disk_usage_str = get_disk_usage(download_dir)
+    
+    # Format time
+    hours, remainder = divmod(int(total_time), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    time_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    # Average speed
+    if total_time > 0:
+        avg_speed = total_bytes / total_time
+        speed_str = f"{format_size(avg_speed)}/s"
+    else:
+        speed_str = "0 B/s"
+
+    stats_section = f"""
+## Statistics
+
+| Metric | Value |
+| :--- | :--- |
+| **Total Images Downloaded** | `{total_files}` |
+| **Total Data Downloaded** | `{total_size_str}` |
+| **Total Time Spent** | `{time_str}` |
+| **Average Download Speed** | `{speed_str}` |
+| **Current Disk Usage** | `{disk_usage_str}` |
+"""
+
+    with open(README_FILE, "r") as f:
+        content = f.read()
+
+    if "## Statistics" in content:
+        # Replace existing section
+        # Finds the start of the section and assumes it ends at the next ## or EOF
+        parts = content.split("## Statistics")
+        pre_stats = parts[0]
+        # Check if there is anything after the stats section (likely not, or maybe just EOF)
+        # We will just append the new stats to the pre_stats part if it was at the end
+        # But if there were other sections after, we need to be careful.
+        # Simple approach: Assume Statistics is at the end or replace until next header
+        
+        # NOTE: This regex replacement is safer
+        import re
+        content = re.sub(r'## Statistics[\s\S]*?(?=\n## |$)', stats_section.strip(), content)
+    else:
+        # Append section
+        content += "\n" + stats_section
+
+    with open(README_FILE, "w") as f:
+        f.write(content)
+    print(f"{Fore.MAGENTA}Updated {README_FILE} with latest statistics.")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Konachan Image Downloader")
-    parser.add_argument("--tags", type=str, default="", help="Tags to search for (space separated, e.g., 'hatsune_miku vocaloid')")
+    parser.add_argument("--tags", type=str, default="", help="Tags to search for (space separated)")
     parser.add_argument("--start", type=int, default=0, help="Start page number (default: auto-resume or 1)")
     parser.add_argument("--end", type=int, default=0, help="End page number (default: 0 = download until empty)")
     parser.add_argument("--workers", type=int, default=MAX_WORKERS_DEFAULT, help=f"Number of concurrent download threads (default: {MAX_WORKERS_DEFAULT})")
@@ -145,70 +246,120 @@ def main():
     else:
         print(f"{Fore.GREEN}Safe Mode ENABLED (Default). Use --unsafe to disable.")
 
-    all_posts = []
-    
     current_page = start_page
     
+    # Session Stats Tracking
+    session_start_time = time.time()
+    session_bytes = 0
+    session_images = 0
+    
     # 1. Fetch and Download Loop
-    while True:
-        # Check end condition
-        if args.end > 0 and current_page > args.end:
-            print(f"{Fore.CYAN}Reached end page {args.end}.")
-            break
+    try:
+        while True:
+            # Check end condition
+            if args.end > 0 and current_page > args.end:
+                print(f"{Fore.CYAN}Reached end page {args.end}.")
+                break
 
-        base_url = BASE_URL_UNSAFE if args.unsafe else BASE_URL_SAFE
-        print(f"{Fore.BLUE}Fetching metadata for page {current_page} from {base_url}...")
-        posts = get_total_posts(base_url, args.tags, current_page, limit=args.limit, timeout=args.timeout)
-        
-        if not posts:
-            print(f"{Fore.YELLOW}No more posts found on page {current_page}. Stopping.")
-            break
-        
-        # Filter for safe mode (default)
-        if not args.unsafe:
-            original_count = len(posts)
-            posts = [p for p in posts if p.get("rating") == "s"]
-            filtered_count = original_count - len(posts)
-            if filtered_count > 0:
-                print(f"Page {current_page}: Filtered {filtered_count} NSFW post(s).")
-                
-        if not posts:
-             print(f"{Fore.YELLOW}Page {current_page}: No image to download after filtering. Moving next.")
-             save_progress(args.tags, current_page)
-             current_page += 1
-             continue
+            base_url = BASE_URL_UNSAFE if args.unsafe else BASE_URL_SAFE
+            print(f"{Fore.BLUE}Fetching metadata for page {current_page} from {base_url}...")
+            posts = get_total_posts(base_url, args.tags, current_page, limit=args.limit, timeout=args.timeout)
+            
+            if not posts:
+                print(f"{Fore.YELLOW}No more posts found on page {current_page}. Stopping.")
+                break
+            
+            # Filter for safe mode (default)
+            if not args.unsafe:
+                original_count = len(posts)
+                posts = [p for p in posts if p.get("rating") == "s"]
+                filtered_count = original_count - len(posts)
+                if filtered_count > 0:
+                    print(f"Page {current_page}: Filtered {filtered_count} NSFW post(s).")
+                    
+            if not posts:
+                 print(f"{Fore.YELLOW}Page {current_page}: No image to download after filtering. Moving next.")
+                 save_progress(args.tags, current_page)
+                 current_page += 1
+                 continue
 
-        print(f"Page {current_page}: Found {len(posts)} images. Downloading...")
+            print(f"Page {current_page}: Found {len(posts)} images. Downloading...")
 
-        # Download Images for this page immediately to save progress per page
-        try:
-            with ThreadPoolExecutor(max_workers=args.workers) as executor:
-                futures = {executor.submit(download_image, post, args.dir, args.timeout): post for post in posts}
-                
+            # Download Images for this page immediately to save progress per page
+            # Use 'wait=False' in shutdown to ensure we don't hang on exit
+            executor = ThreadPoolExecutor(max_workers=args.workers)
+            futures = {}
+            try:
+                # Submit all tasks
+                for post in posts:
+                    future = executor.submit(download_image, post, args.dir, args.timeout)
+                    futures[future] = post
+
+                # Process results with a timeout for each completion
+                # We expect at least one image to finish within (timeout + 5) seconds normally.
+                # If cloudscraper hangs, this helps us bail out.
                 with tqdm(total=len(posts), unit="img") as pbar:
-                     for future in concurrent.futures.as_completed(futures):
-                        result = future.result()
-                        if "Failed" in result:
-                            pbar.write(result)
-                        pbar.update(1)
-        except KeyboardInterrupt:
-            print(f"\n{Fore.RED}Download interrupted by user. Exiting...")
-            # Note: The executor context manager in python < 3.9 will wait for threads.
-            # But the user is on 3.10, so it will try to exit cleanly if we break.
-            # To be safe, we can just return or exit, but threading might hang if not daemon.
-            # ThreadPoolExecutor threads are NOT daemon by default. 
-            # We will forcefully exit.
-            executor.shutdown(wait=False, cancel_futures=True)
-            return
+                    done_count = 0
+                    try:
+                        for future in concurrent.futures.as_completed(futures, timeout=args.timeout + 5):
+                            try:
+                                msg, size = future.result()
+                                if size > 0:
+                                    session_bytes += size
+                                    session_images += 1
+                                
+                                if "Failed" in msg:
+                                    pbar.write(msg)
+                                elif "Downloaded" in msg:
+                                    pass
+                            except Exception as e:
+                                pbar.write(f"{Fore.RED}Error in worker: {e}")
+                            
+                            pbar.update(1)
+                            done_count += 1
+                    except concurrent.futures.TimeoutError:
+                        pbar.write(f"{Fore.RED}Batch timed out! {len(futures) - done_count} images were stuck.")
+                        # Cancel remaining
+                        for f in futures:
+                            f.cancel()
+            
+            except KeyboardInterrupt:
+                print(f"\n{Fore.RED}Download interrupted by user. Exiting immediately...")
+                executor.shutdown(wait=False, cancel_futures=True)
+                # Re-raise to exit the main loop
+                raise
+            finally:
+                 # Ensure executor is cleaned up, but don't wait forever if stuck
+                 executor.shutdown(wait=False, cancel_futures=True)
 
-        # Update progress after page is complete
-        save_progress(args.tags, current_page)
-        current_page += 1
+            # Update progress after page is complete
+            save_progress(args.tags, current_page)
+            current_page += 1
+            
+            # Polite delay
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print(f"\n{Fore.RED}Download interrupted by user.")
+    except Exception as e:
+        print(f"\n{Fore.RED}An unexpected error occurred: {e}")
+    finally:
+        # Save Stats
+        session_duration = time.time() - session_start_time
+        print(f"\n{Fore.CYAN}Session Summary:")
+        print(f"  Images: {session_images}")
+        print(f"  Data: {format_size(session_bytes)}")
+        print(f"  Time: {session_duration:.2f}s")
         
-        # Polite delay
-        time.sleep(1)
-
-    print(f"{Fore.CYAN}Job finished!")
+        all_stats = load_stats()
+        all_stats["total_downloaded_bytes"] += session_bytes
+        all_stats["total_time_seconds"] += session_duration
+        all_stats["total_images_downloaded"] += session_images
+        
+        save_stats(all_stats)
+        update_readme(all_stats, args.dir)
+        
+        print(f"{Fore.CYAN}Job finished!")
 
 
 if __name__ == "__main__":
