@@ -10,7 +10,13 @@ from urllib.parse import urlparse
 import cloudscraper
 from typing import List, Dict, Any, Tuple
 
-from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential, retry_if_exception_type, before_sleep_log
+import logging
+import sys
+
+# Configure logging for tenacity
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logger = logging.getLogger(__name__)
 from tqdm import tqdm
 from colorama import init, Fore
 
@@ -31,29 +37,34 @@ class DownloadError(Exception):
     pass
 
 
+@retry(
+    stop=stop_after_attempt(20),
+    wait=wait_exponential(multiplier=1, min=4, max=60),
+    retry=retry_if_exception_type((requests.RequestException, cloudscraper.exceptions.CloudflareException)),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True
+)
 def get_total_posts(base_url: str, tags: str, page: int, limit: int = 100, timeout: int = 10) -> List[Dict[str, Any]]:
     """
-    Fetch posts from the API.
+    Fetch posts from the API with robust retries.
     """
     params = {
         "tags": tags,
         "page": page,
         "limit": limit
     }
-    try:
-        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
-        response = scraper.get(base_url, params=params, timeout=timeout)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"{Fore.RED}Error fetching metadata for page {page}: {e}")
-        return []
+    # No internal try-except here so tenacity can catch the error
+    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+    response = scraper.get(base_url, params=params, timeout=timeout)
+    response.raise_for_status()
+    return response.json()
 
 
 @retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(requests.RequestException),
+    stop=stop_after_attempt(10),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    retry=retry_if_exception_type((requests.RequestException, cloudscraper.exceptions.CloudflareException)),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True
 )
 def fetch_image_content(url: str, timeout: int = 10) -> bytes:
