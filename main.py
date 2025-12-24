@@ -15,7 +15,7 @@ from const import (
     DEFAULT_TIMEOUT, MAX_WORKERS_DEFAULT
 )
 from api import get_total_posts, fetch_image_content
-from stats import load_stats, save_stats, update_readme, format_size
+from stats import load_stats, save_stats, format_size
 
 # Initialize colorama
 init(autoreset=True)
@@ -233,7 +233,6 @@ def main():
         all_stats["total_images_downloaded"] += session_images
         
         save_stats(all_stats)
-        update_readme(all_stats, args.dir)
         
         print(f"{Fore.CYAN}Job finished!")
 
