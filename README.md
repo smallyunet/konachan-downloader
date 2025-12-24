@@ -3,6 +3,8 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 
+![Screenshot](docs/screenshot.png)
+
 A professional, multi-threaded Python CLI tool to download images from [konachan.net](https://konachan.net). It supports downloading the latest uploads or filtering by specific tags.
 
 ## Table of Contents
@@ -105,8 +107,8 @@ MIT - See [LICENSE](LICENSE) for details.
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Images Downloaded** | `5703` |
-| **Total Data Downloaded** | `40.91 GB` |
-| **Total Time Spent** | `01:48:27` |
-| **Average Download Speed** | `6.44 MB/s` |
-| **Current Disk Usage** | `44.37 GB` |
+| **Total Images Downloaded** | `6397` |
+| **Total Data Downloaded** | `45.71 GB` |
+| **Total Time Spent** | `02:04:57` |
+| **Average Download Speed** | `6.24 MB/s` |
+| **Current Disk Usage** | `46.65 GB` |
