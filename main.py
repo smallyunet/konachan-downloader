@@ -1,5 +1,6 @@
 import os
 import time
+import math
 import argparse
 import json
 import concurrent.futures
@@ -14,7 +15,7 @@ from const import (
     BASE_URL_SAFE, BASE_URL_UNSAFE, DEFAULT_DOWNLOAD_DIR,
     DEFAULT_TIMEOUT, MAX_WORKERS_DEFAULT
 )
-from api import get_total_posts, fetch_image_content
+from api import get_total_posts, fetch_image_content, get_total_count
 from stats import load_stats, save_stats, format_size
 
 # Initialize colorama
@@ -112,6 +113,16 @@ def main():
 
     current_page = start_page
     
+    # Fetch total count to calculate total pages
+    base_url = BASE_URL_UNSAFE if args.unsafe else BASE_URL_SAFE
+    try:
+        total_posts = get_total_count(base_url, args.tags, proxies=proxies, timeout=args.timeout)
+        total_pages = math.ceil(total_posts / args.limit)
+        print(f"{Fore.CYAN}Total posts found: {total_posts} (~{total_pages} pages)")
+    except Exception as e:
+        print(f"{Fore.YELLOW}Warning: Could not fetch total post count: {e}")
+        total_pages = 0
+
     # Session Stats Tracking
     session_start_time = time.time()
     session_bytes = 0
@@ -126,7 +137,10 @@ def main():
                 break
 
             base_url = BASE_URL_UNSAFE if args.unsafe else BASE_URL_SAFE
-            print(f"{Fore.BLUE}Fetching metadata for page {current_page} from {base_url}...")
+            page_str = f"page {current_page}"
+            if total_pages > 0:
+                page_str += f" of {total_pages}"
+            print(f"{Fore.BLUE}Fetching metadata for {page_str} from {base_url}...")
             
             try:
                 posts = get_total_posts(base_url, args.tags, current_page, proxies=proxies, limit=args.limit, timeout=args.timeout)
@@ -156,7 +170,10 @@ def main():
                  current_page += 1
                  continue
 
-            print(f"Page {current_page}: Found {len(posts)} images. Downloading...")
+            page_summary = f"Page {current_page}"
+            if total_pages > 0:
+                page_summary += f"/{total_pages}"
+            print(f"{page_summary}: Found {len(posts)} images. Downloading...")
 
             # Download Images for this page immediately to save progress per page
             # Use 'wait=False' in shutdown to ensure we don't hang on exit
