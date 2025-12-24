@@ -1,83 +1,26 @@
 import os
 import time
 import argparse
-import requests
 import json
 import concurrent.futures
-import math
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
-import cloudscraper
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 
-from tenacity import retry, stop_after_attempt, wait_fixed, wait_exponential, retry_if_exception_type, before_sleep_log
-import logging
-import sys
-
-# Configure logging for tenacity
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-logger = logging.getLogger(__name__)
-from tqdm import tqdm
 from colorama import init, Fore
+from tqdm import tqdm
+
+from const import (
+    BASE_URL_SAFE, BASE_URL_UNSAFE, DEFAULT_DOWNLOAD_DIR,
+    DEFAULT_TIMEOUT, MAX_WORKERS_DEFAULT
+)
+from api import get_total_posts, fetch_image_content
+from stats import load_stats, save_stats, update_readme, format_size
 
 # Initialize colorama
 init(autoreset=True)
 
-# Default Constants
-BASE_URL_SAFE = "https://konachan.net/post.json"
-BASE_URL_UNSAFE = "https://konachan.com/post.json"
-DEFAULT_DOWNLOAD_DIR = "downloads"
-DEFAULT_TIMEOUT = 10  # Seconds
-MAX_WORKERS_DEFAULT = 5
-STATS_FILE = "stats.json"
-README_FILE = "README.md"
-
-
-class DownloadError(Exception):
-    pass
-
-
-@retry(
-    stop=stop_after_attempt(20),
-    wait=wait_exponential(multiplier=1, min=4, max=60),
-    retry=retry_if_exception_type((requests.RequestException, cloudscraper.exceptions.CloudflareException)),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True
-)
-def get_total_posts(base_url: str, tags: str, page: int, limit: int = 100, timeout: int = 10) -> List[Dict[str, Any]]:
-    """
-    Fetch posts from the API with robust retries.
-    """
-    params = {
-        "tags": tags,
-        "page": page,
-        "limit": limit
-    }
-    # No internal try-except here so tenacity can catch the error
-    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
-    response = scraper.get(base_url, params=params, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
-
-
-@retry(
-    stop=stop_after_attempt(10),
-    wait=wait_exponential(multiplier=1, min=2, max=30),
-    retry=retry_if_exception_type((requests.RequestException, cloudscraper.exceptions.CloudflareException)),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True
-)
-def fetch_image_content(url: str, timeout: int = 10) -> bytes:
-    """
-    Run content fetching with retries using cloudscraper.
-    """
-    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
-    response = scraper.get(url, timeout=timeout)
-    response.raise_for_status()
-    return response.content
-
-
-def download_image(post: Dict[str, Any], download_dir: str, timeout: int = 10) -> Tuple[str, int]:
+def download_image(post: Dict[str, Any], download_dir: str, proxies: Dict[str, str] = None, timeout: int = 10) -> Tuple[str, int]:
     """
     Download a single image. Returns (status_message, downloaded_bytes).
     """
@@ -100,113 +43,13 @@ def download_image(post: Dict[str, Any], download_dir: str, timeout: int = 10) -
         return f"{Fore.YELLOW}Skipped (already exists): {filename}", 0
 
     try:
-        content = fetch_image_content(file_url, timeout=timeout)
+        content = fetch_image_content(file_url, proxies=proxies, timeout=timeout)
         size = len(content)
         with open(filepath, "wb") as f:
             f.write(content)
         return f"{Fore.GREEN}Downloaded: {filename}", size
     except Exception as e:
         return f"{Fore.RED}Failed: {filename} - {e}", 0
-
-
-def format_size(size_bytes: int) -> str:
-    if size_bytes == 0:
-        return "0 B"
-    size_name = ("B", "KB", "MB", "GB", "TB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return f"{s} {size_name[i]}"
-
-
-def load_stats() -> Dict[str, Any]:
-    if os.path.exists(STATS_FILE):
-        try:
-            with open(STATS_FILE, "r") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            pass
-    return {
-        "total_downloaded_bytes": 0,
-        "total_time_seconds": 0,
-        "total_images_downloaded": 0
-    }
-
-
-def save_stats(stats: Dict[str, Any]):
-    with open(STATS_FILE, "w") as f:
-        json.dump(stats, f, indent=4)
-
-
-def get_disk_usage(directory: str) -> str:
-    total_size = 0
-    for dirpath, dirnames, filenames in os.walk(directory):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            if not os.path.islink(fp):
-                total_size += os.path.getsize(fp)
-    return format_size(total_size)
-
-
-def update_readme(stats: Dict[str, Any], download_dir: str):
-    if not os.path.exists(README_FILE):
-        return
-
-    # Calculate readable metrics
-    total_files = stats.get("total_images_downloaded", 0)
-    total_bytes = stats.get("total_downloaded_bytes", 0)
-    total_time = stats.get("total_time_seconds", 0)
-    
-    total_size_str = format_size(total_bytes)
-    disk_usage_str = get_disk_usage(download_dir)
-    
-    # Format time
-    hours, remainder = divmod(int(total_time), 3600)
-    minutes, seconds = divmod(remainder, 60)
-    time_str = f"{hours:02}:{minutes:02}:{seconds:02}"
-
-    # Average speed
-    if total_time > 0:
-        avg_speed = total_bytes / total_time
-        speed_str = f"{format_size(avg_speed)}/s"
-    else:
-        speed_str = "0 B/s"
-
-    stats_section = f"""
-## Statistics
-
-| Metric | Value |
-| :--- | :--- |
-| **Total Images Downloaded** | `{total_files}` |
-| **Total Data Downloaded** | `{total_size_str}` |
-| **Total Time Spent** | `{time_str}` |
-| **Average Download Speed** | `{speed_str}` |
-| **Current Disk Usage** | `{disk_usage_str}` |
-"""
-
-    with open(README_FILE, "r") as f:
-        content = f.read()
-
-    if "## Statistics" in content:
-        # Replace existing section
-        # Finds the start of the section and assumes it ends at the next ## or EOF
-        parts = content.split("## Statistics")
-        pre_stats = parts[0]
-        # Check if there is anything after the stats section (likely not, or maybe just EOF)
-        # We will just append the new stats to the pre_stats part if it was at the end
-        # But if there were other sections after, we need to be careful.
-        # Simple approach: Assume Statistics is at the end or replace until next header
-        
-        # NOTE: This regex replacement is safer
-        import re
-        content = re.sub(r'## Statistics[\s\S]*?(?=\n## |$)', stats_section.strip(), content)
-    else:
-        # Append section
-        content += "\n" + stats_section
-
-    with open(README_FILE, "w") as f:
-        f.write(content)
-    print(f"{Fore.MAGENTA}Updated {README_FILE} with latest statistics.")
 
 
 def main():
@@ -219,11 +62,21 @@ def main():
     parser.add_argument("--limit", type=int, default=100, help="Max posts per page (default: 100)")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help=f"Network timeout in seconds (default: {DEFAULT_TIMEOUT})")
     parser.add_argument("--unsafe", action="store_true", help="Allow NSFW content (unsafe mode)")
+    parser.add_argument("--proxy", type=str, default=None, help="Proxy URL (e.g., http://127.0.0.1:7890)")
 
     args = parser.parse_args()
 
     # Ensure download directory exists
     os.makedirs(args.dir, exist_ok=True)
+    
+    # Prepare proxies
+    proxies = None
+    if args.proxy:
+        proxies = {
+            "http": args.proxy,
+            "https": args.proxy
+        }
+        print(f"{Fore.YELLOW}Using proxy: {args.proxy}")
 
     # Progress Tracking
     progress_file = "progress.json"
@@ -274,8 +127,17 @@ def main():
 
             base_url = BASE_URL_UNSAFE if args.unsafe else BASE_URL_SAFE
             print(f"{Fore.BLUE}Fetching metadata for page {current_page} from {base_url}...")
-            posts = get_total_posts(base_url, args.tags, current_page, limit=args.limit, timeout=args.timeout)
             
+            try:
+                posts = get_total_posts(base_url, args.tags, current_page, proxies=proxies, limit=args.limit, timeout=args.timeout)
+            except Exception as e:
+                print(f"{Fore.RED}Failed to fetch posts: {e}")
+                if "NameResolutionError" in str(e) and not args.proxy:
+                    print(f"{Fore.YELLOW}TIP: If you are seeing NameResolutionError, try using the --proxy argument.")
+                # We can choose to break or retry, but tenacity handles retries. 
+                # If it bubbles up here, it's a permanent failure.
+                break
+
             if not posts:
                 print(f"{Fore.YELLOW}No more posts found on page {current_page}. Stopping.")
                 break
@@ -303,7 +165,7 @@ def main():
             try:
                 # Submit all tasks
                 for post in posts:
-                    future = executor.submit(download_image, post, args.dir, args.timeout)
+                    future = executor.submit(download_image, post, args.dir, proxies=proxies, timeout=args.timeout)
                     futures[future] = post
 
                 # Process results with a timeout for each completion

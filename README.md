@@ -106,8 +106,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Images Downloaded** | `1231` |
-| **Total Data Downloaded** | `9.37 GB` |
-| **Total Time Spent** | `00:26:36` |
-| **Average Download Speed** | `6.01 MB/s` |
-| **Current Disk Usage** | `172.69 MB` |
+| **Total Images Downloaded** | `1913` |
+| **Total Data Downloaded** | `14.21 GB` |
+| **Total Time Spent** | `00:50:05` |
+| **Average Download Speed** | `4.84 MB/s` |
+| **Current Disk Usage** | `15.15 GB` |
