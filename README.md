@@ -107,8 +107,8 @@ MIT - See [LICENSE](LICENSE) for details.
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Images Downloaded** | `21735` |
-| **Total Data Downloaded** | `139.62 GB` |
-| **Total Time Spent** | `06:06:57` |
-| **Average Download Speed** | `6.49 MB/s` |
-| **Current Disk Usage** | `140.82 GB` |
+| **Total Images Downloaded** | `22089` |
+| **Total Data Downloaded** | `142.09 GB` |
+| **Total Time Spent** | `06:13:19` |
+| **Average Download Speed** | `6.5 MB/s` |
+| **Current Disk Usage** | `143.29 GB` |
