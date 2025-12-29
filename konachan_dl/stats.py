@@ -4,7 +4,7 @@ import math
 import re
 from typing import Dict, Any
 from colorama import Fore
-from const import STATS_FILE, README_FILE
+from .const import STATS_FILE, README_FILE
 
 def format_size(size_bytes: int) -> str:
     if size_bytes == 0:

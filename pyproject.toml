@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+
+[project]
+name = "konachan-downloader"
+dynamic = ["version"]
+description = "A professional, multi-threaded downloader for konachan.net"
+readme = "README.md"
+authors = [
+  { name = "Your Name", email = "your.email@example.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests",
+    "cloudscraper",
+    "tenacity",
+    "colorama",
+    "tqdm",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/konachan-downloader"
+"Bug Tracker" = "https://github.com/yourusername/konachan-downloader/issues"
+
+[project.scripts]
+konachan-dl = "konachan_dl.main:main"

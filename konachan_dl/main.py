@@ -11,12 +11,12 @@ from typing import Dict, Any, Tuple
 from colorama import init, Fore
 from tqdm import tqdm
 
-from const import (
+from .const import (
     BASE_URL_SAFE, BASE_URL_UNSAFE, DEFAULT_DOWNLOAD_DIR,
     DEFAULT_TIMEOUT, MAX_WORKERS_DEFAULT
 )
-from api import get_total_posts, fetch_image_content, get_total_count
-from stats import load_stats, save_stats, format_size
+from .api import get_total_posts, fetch_image_content, get_total_count
+from .stats import load_stats, save_stats, format_size
 
 # Initialize colorama
 init(autoreset=True)

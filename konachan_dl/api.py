@@ -5,7 +5,7 @@ import sys
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Tuple
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type, before_sleep_log
-from const import STATS_FILE, README_FILE
+from .const import STATS_FILE, README_FILE
 
 # Configure logging for tenacity
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)

@@ -1,6 +1,6 @@
 import argparse
-from const import DEFAULT_DOWNLOAD_DIR
-from stats import load_stats, update_readme
+from konachan_dl.const import DEFAULT_DOWNLOAD_DIR
+from konachan_dl.stats import load_stats, update_readme
 
 def main():
     parser = argparse.ArgumentParser(description="Update README.md with download statistics")
