@@ -1,0 +1,41 @@
+site_name: Konachan Downloader
+site_url: https://smallyunet.github.io/konachan-downloader/
+repo_url: https://github.com/smallyunet/konachan-downloader
+repo_name: smallyunet/konachan-downloader
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.top
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: pink
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: pink
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html

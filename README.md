@@ -2,6 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 [![PyPI](https://img.shields.io/pypi/v/konachan-downloader)](https://pypi.org/project/konachan-downloader/)
+[![Homebrew](https://img.shields.io/badge/homebrew-tap-orange)](https://github.com/smallyunet/homebrew-tap)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 
 ![Screenshot](docs/screenshot.png)
@@ -10,7 +11,7 @@ A high-performance CLI tool designed for efficiently downloading images from **k
 
 ## ✨ Key Features
 
-- **🔄 Smart Update**: Automatically checks for new uploads on page 1 and stops once it catches up to your local library. No more scanning thousands of old pages!
+- **🔄 Smart Update & Resume**: The ultimate workflow. It checks page 1-5 for new uploads. If no new images are found, it **automatically jumps** to your last saved "deep" progress (e.g., Page 400) and continues archiving.
 - **⚡ High Performance**: Multi-threaded downloader utilizes full bandwidth.
 - **⏯️ Resumable**: Skips existing files and remembers your last position.
 - **🛡️ Secure**: Defaults to Safe Mode. Unsafe Mode supports Cloudflare bypass logic.
@@ -19,7 +20,9 @@ A high-performance CLI tool designed for efficiently downloading images from **k
 ## 🚀 Quick Usage
 
 ### The "Best Practice" Way
-Use **Smart Mode** to keep your collection up to date. It starts from Page 1 and automatically stops when it hits 5 consecutive pages of already-downloaded images.
+Use **Smart Mode** for everything. It handles both **checking for updates** and **resuming deep downloads**.
+1. Scans recent pages for new content.
+2. If fully caught up, it **auto-jumps** to your history (e.g., Page 400) to fill old gaps.
 
 ```bash
 konachan-dl --tags "hatsune_miku" --smart

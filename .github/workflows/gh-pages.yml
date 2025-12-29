@@ -1,0 +1,44 @@
+name: Publish Docs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+          
+      - run: pip install mkdocs-material
+      
+      - name: Prepare Docs
+        run: |
+          # Ensure docs directory exists
+          mkdir -p docs
+          
+          # Copy README to index.md
+          cp README.md docs/index.md
+          
+          # Fix image paths in index.md (docs/screenshot.png -> screenshot.png)
+          # Since index.md is IN docs/, we reference adjacent files directly
+          sed -i 's|docs/screenshot.png|screenshot.png|g' docs/index.md
+          
+          # Ensure screenshot exists in docs (it should be there in git, but just in case)
+          # Note: In the repo, it is indeed in docs/screenshot.png, so we are good.
+          
+      - run: mkdocs gh-deploy --force
