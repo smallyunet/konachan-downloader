@@ -1,6 +1,7 @@
 # Konachan Downloader
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![PyPI](https://img.shields.io/pypi/v/konachan-downloader)](https://pypi.org/project/konachan-downloader/)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 
 ![Screenshot](docs/screenshot.png)
@@ -21,7 +22,7 @@ A high-performance CLI tool designed for efficiently downloading images from **k
 Use **Smart Mode** to keep your collection up to date. It starts from Page 1 and automatically stops when it hits 5 consecutive pages of already-downloaded images.
 
 ```bash
-python main.py --tags "hatsune_miku" --smart
+konachan-dl --tags "hatsune_miku" --smart
 ```
 
 ### Other Commands
@@ -29,24 +30,36 @@ python main.py --tags "hatsune_miku" --smart
 **Download Everything (First Run)**
 ```bash
 # Resume automatically from where you left off
-python main.py --tags "hatsune_miku"
+konachan-dl --tags "hatsune_miku"
 ```
 
 **Unsafe Mode (NSFW)**
 ```bash
 # Switches to konachan.com
-python main.py --tags "scenery" --unsafe
+konachan-dl --tags "scenery" --unsafe
 ```
 
 **Custom Range**
 ```bash
-python main.py --tags "vocaloid" --start 1 --end 10
+konachan-dl --tags "vocaloid" --start 1 --end 10
 ```
 
 ## ⚙️ Installation
 
+### Homebrew (Recommended for macOS)
 ```bash
-git clone https://github.com/yourusername/konachan-downloader.git
+brew tap smallyunet/tap
+brew install konachan-downloader
+```
+
+### PyPI
+```bash
+pip install konachan-downloader
+```
+
+### From Source (Developers)
+```bash
+git clone https://github.com/smallyunet/konachan-downloader.git
 cd konachan-downloader
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -61,14 +74,3 @@ pip install -r requirements.txt
 | **Total Time** | `06:13:19` |
 | **Current Disk** | `143.29 GB` |
 
-*(Run `python update_readme.py` to update these stats locally)*
-
-
-## Statistics
-
-| Metric | Value |
-| :--- | :--- |
-| **Total Images** | `22218` |
-| **Total Data** | `143.0 GB` |
-| **Total Time** | `06:15:07` |
-| **Current Disk** | `144.23 GB` |
