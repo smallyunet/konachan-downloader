@@ -74,11 +74,10 @@ def update_readme(stats: Dict[str, Any], download_dir: str):
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Images Downloaded** | `{total_files}` |
-| **Total Data Downloaded** | `{total_size_str}` |
-| **Total Time Spent** | `{time_str}` |
-| **Average Download Speed** | `{speed_str}` |
-| **Current Disk Usage** | `{disk_usage_str}` |
+| **Total Images** | `{total_files}` |
+| **Total Data** | `{total_size_str}` |
+| **Total Time** | `{time_str}` |
+| **Current Disk** | `{disk_usage_str}` |
 """
 
     with open(README_FILE, "r") as f:

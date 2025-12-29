@@ -5,110 +5,70 @@
 
 ![Screenshot](docs/screenshot.png)
 
-A professional, multi-threaded Python CLI tool to download images from [konachan.net](https://konachan.net). It supports downloading the latest uploads or filtering by specific tags.
+A high-performance CLI tool designed for efficiently downloading images from **konachan.net**. It features a smart update system, resumable downloads, and multi-threading support.
 
-## Table of Contents
+## ✨ Key Features
 
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Examples](#examples)
-  - [Options](#options)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
-- [Statistics](#statistics)
+- **🔄 Smart Update**: Automatically checks for new uploads on page 1 and stops once it catches up to your local library. No more scanning thousands of old pages!
+- **⚡ High Performance**: Multi-threaded downloader utilizes full bandwidth.
+- **⏯️ Resumable**: Skips existing files and remembers your last position.
+- **🛡️ Secure**: Defaults to Safe Mode. Unsafe Mode supports Cloudflare bypass logic.
+- **🔍 Robust**: Built-in retries for network stability.
 
-## Features
+## 🚀 Quick Usage
 
-- **Multi-threaded**: Fast downloading with concurrent workers.
-- **Resumable**: Skips files that already exist and remembers last page per tag.
-- **Smart Filtering**: Safe mode enabled by default; NSFW switches to Cloudflare-aware engine.
-- **Robust**: Automatic retries and rate limiting to respect server load.
+### The "Best Practice" Way
+Use **Smart Mode** to keep your collection up to date. It starts from Page 1 and automatically stops when it hits 5 consecutive pages of already-downloaded images.
 
-## Project Structure
-
-```text
-.
-├── main.py            # Entry point, CLI handling & download orchestrator
-├── api.py             # Network logic (Cloudscraper, tenacity retries)
-├── stats.py           # Statistics calculation and README formatting
-├── const.py           # Shared constants and configurations
-├── update_readme.py   # Standalone maintenance script for stats
-├── progress.json      # PERSISTENT: Tracks last downloaded page per tag
-└── stats.json         # PERSISTENT: Lifetime download statistics
+```bash
+python main.py --tags "hatsune_miku" --smart
 ```
 
-## Installation
+### Other Commands
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/yourusername/konachan-downloader.git
-    cd konachan-downloader
-    ```
-
-2.  **Set up environment**:
-    ```bash
-    python3 -m venv .venv
-    source .venv/bin/activate  # Windows: .venv\Scripts\activate
-    pip install -r requirements.txt
-    ```
-
-## Usage
-
-### Examples
-
-**Standard Download (Safe only):**
+**Download Everything (First Run)**
 ```bash
+# Resume automatically from where you left off
 python main.py --tags "hatsune_miku"
 ```
 
-**Unsafe Mode (NSFW):**
+**Unsafe Mode (NSFW)**
 ```bash
+# Switches to konachan.com
 python main.py --tags "scenery" --unsafe
 ```
 
-**Specific Range:**
+**Custom Range**
 ```bash
-python main.py --tags "vocaloid" --start 1 --end 5
+python main.py --tags "vocaloid" --start 1 --end 10
 ```
 
-### Options
-
-| Argument | Default | Description |
-| :--- | :--- | :--- |
-| `--tags` | `""` | Tags to search for (space separated). |
-| `--start` | `0` | Start page. `0` = Auto-resume. |
-| `--end` | `0` | End page. `0` = Until empty. |
-| `--workers` | `5` | Concurrent threads. |
-| `--dir` | `downloads` | Save directory. |
-| `--unsafe` | `False` | Enable NSFW content (switches to konachan.com). |
-| `--proxy` | `None` | Proxy URL (e.g., http://127.0.0.1:7890). |
-
-## Maintenance
-
-To keep your `README.md` statistics up to date, run the maintenance script after downloads:
+## ⚙️ Installation
 
 ```bash
-python update_readme.py
+git clone https://github.com/yourusername/konachan-downloader.git
+cd konachan-downloader
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## Troubleshooting
+## 📊 Statistics
 
-- **403 Forbidden**: Usually occurs on `konachan.com` (Unsafe mode) due to Cloudflare protection. Ensure `cloudscraper` is up to date.
-- **Connection Errors**: If you encounter `NameResolutionError` or timeouts, try using a proxy with the `--proxy` flag.
+| Metric | Value |
+| :--- | :--- |
+| **Total Images** | `22089` |
+| **Total Data** | `142.09 GB` |
+| **Total Time** | `06:13:19` |
+| **Current Disk** | `143.29 GB` |
 
-## License
+*(Run `python update_readme.py` to update these stats locally)*
 
-MIT - See [LICENSE](LICENSE) for details.
 
 ## Statistics
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Images Downloaded** | `22089` |
-| **Total Data Downloaded** | `142.09 GB` |
-| **Total Time Spent** | `06:13:19` |
-| **Average Download Speed** | `6.5 MB/s` |
-| **Current Disk Usage** | `143.29 GB` |
+| **Total Images** | `22091` |
+| **Total Data** | `142.1 GB` |
+| **Total Time** | `06:13:23` |
+| **Current Disk** | `0 B` |

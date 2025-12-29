@@ -64,8 +64,18 @@ def main():
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help=f"Network timeout in seconds (default: {DEFAULT_TIMEOUT})")
     parser.add_argument("--unsafe", action="store_true", help="Allow NSFW content (unsafe mode)")
     parser.add_argument("--proxy", type=str, default=None, help="Proxy URL (e.g., http://127.0.0.1:7890)")
+    parser.add_argument("--stop-after-skipped", type=int, default=0, help="Stop after N consecutive pages where all images were skipped (default: 0 = disabled)")
+    parser.add_argument("--smart", action="store_true", help="Smart Mode: Start from page 1 and stop after 5 skipped pages (equivalent to --start 1 --stop-after-skipped 5)")
 
     args = parser.parse_args()
+
+    # Smart Mode Override
+    if args.smart:
+        if args.start == 0:  # Only override if not explicitly set
+            args.start = 1
+        if args.stop_after_skipped == 0:
+            args.stop_after_skipped = 5
+        print(f"{Fore.MAGENTA}Smart Mode ENABLED: Starting from page {args.start}, stop after {args.stop_after_skipped} skipped pages.")
 
     # Ensure download directory exists
     os.makedirs(args.dir, exist_ok=True)
@@ -129,6 +139,7 @@ def main():
     session_images = 0
     
     # 1. Fetch and Download Loop
+    consecutive_skipped_pages = 0
     try:
         while True:
             # Check end condition
@@ -178,6 +189,7 @@ def main():
             # Download Images for this page immediately to save progress per page
             # Use 'wait=False' in shutdown to ensure we don't hang on exit
             executor = ThreadPoolExecutor(max_workers=args.workers)
+            images_downloaded_on_this_page = 0
             futures = {}
             try:
                 # Submit all tasks
@@ -200,6 +212,7 @@ def main():
                                 if size > 0:
                                     session_bytes += size
                                     session_images += 1
+                                    images_downloaded_on_this_page += 1
                                 
                                 if "Failed" in msg:
                                     pbar.write(msg)
@@ -227,6 +240,17 @@ def main():
 
             # Update progress after page is complete
             save_progress(args.tags, current_page)
+
+            # Check for smart stop
+            if args.stop_after_skipped > 0:
+                if images_downloaded_on_this_page == 0:
+                    consecutive_skipped_pages += 1
+                    print(f"{Fore.YELLOW}  >> Page {current_page} skipped completely. ({consecutive_skipped_pages}/{args.stop_after_skipped} consecutive)")
+                    if consecutive_skipped_pages >= args.stop_after_skipped:
+                        print(f"{Fore.MAGENTA}  >> Reached limit of {args.stop_after_skipped} skipped pages. Smart stop triggered.")
+                        break
+                else:
+                    consecutive_skipped_pages = 0
             current_page += 1
             
             # Polite delay
