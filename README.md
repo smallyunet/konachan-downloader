@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 | Metric | Value |
 | :--- | :--- |
-| **Total Images** | `22091` |
-| **Total Data** | `142.1 GB` |
-| **Total Time** | `06:13:23` |
-| **Current Disk** | `0 B` |
+| **Total Images** | `22218` |
+| **Total Data** | `143.0 GB` |
+| **Total Time** | `06:15:07` |
+| **Current Disk** | `144.23 GB` |
