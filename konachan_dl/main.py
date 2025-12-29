@@ -41,7 +41,15 @@ def download_image(post: Dict[str, Any], download_dir: str, proxies: Dict[str, s
 
     # Resume capability: Check if file exists
     if os.path.exists(filepath):
-        return f"{Fore.YELLOW}Skipped (already exists): {filename}", 0
+        # Verification: Check file size
+        local_size = os.path.getsize(filepath)
+        remote_size = post.get("file_size")
+        
+        if remote_size and local_size == remote_size:
+            return f"{Fore.YELLOW}Skipped (exists & verified): {filename}", 0
+        else:
+             # Size mismatch or unknown, redownload
+             print(f"{Fore.YELLOW}File exists but size mismatch (Local: {local_size} vs Remote: {remote_size}). Redownloading {filename}...")
 
     try:
         content = fetch_image_content(file_url, proxies=proxies, timeout=timeout)
@@ -103,7 +111,9 @@ def main():
 
     def save_progress(tags, last_page):
         data = load_progress()
-        data[tags] = last_page
+        # Only update if the new page is greater than the stored one (never regress)
+        old_page = data.get(tags, 0)
+        data[tags] = max(old_page, last_page)
         with open(progress_file, "w") as f:
             json.dump(data, f, indent=4)
 
@@ -242,13 +252,25 @@ def main():
             save_progress(args.tags, current_page)
 
             # Check for smart stop
+            # Check for smart stop / jump
             if args.stop_after_skipped > 0:
                 if images_downloaded_on_this_page == 0:
                     consecutive_skipped_pages += 1
                     print(f"{Fore.YELLOW}  >> Page {current_page} skipped completely. ({consecutive_skipped_pages}/{args.stop_after_skipped} consecutive)")
+                    
                     if consecutive_skipped_pages >= args.stop_after_skipped:
-                        print(f"{Fore.MAGENTA}  >> Reached limit of {args.stop_after_skipped} skipped pages. Smart stop triggered.")
-                        break
+                        # Improved Logic: Check if we have a deeper saved progress
+                        saved_progress = load_progress().get(args.tags, 0)
+                        if saved_progress > current_page:
+                             print(f"{Fore.MAGENTA}  >> Smart Mode: Caught up to local library. Jumping to saved progress: Page {saved_progress}...")
+                             # Jump forward
+                             current_page = saved_progress
+                             # Reset counter so we don't immediately stop again if the jump target is also empty (though unlikely if saved correctly)
+                             consecutive_skipped_pages = 0
+                             continue
+                        else:
+                             print(f"{Fore.MAGENTA}  >> Reached limit of {args.stop_after_skipped} skipped pages and no deeper progress found. Smart stop triggered.")
+                             break
                 else:
                     consecutive_skipped_pages = 0
             current_page += 1
